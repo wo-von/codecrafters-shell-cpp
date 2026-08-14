@@ -1,8 +1,9 @@
 #include <iostream>
 #include <string>
 #include <vector>
+#include <unordered_set>
 
-
+std::unordered_set<std::string>builtsins = {"echo", "exit", "type"};
 std::vector<std::string> parse_input(const std::string& s, const std::string& delim) {
   std::vector<std::string> result;
   size_t start = 0, end;
@@ -26,6 +27,14 @@ void builtin_echo(const std::vector<std::string>& s) {
   std::cout << std::endl;
   return;
 }
+ void builtin_type(const std::vector<std::string>& s) {
+  if (builtsins.contains(s[1])){
+    std::cout << s[1] << " is a shell builtin" << std::endl;
+  } else {
+    std::cout << s[1] << ": not found" << std::endl;
+  }
+  return;
+ }
 
 int main() {
   // Flush after every std::cout / std:cerr
@@ -37,6 +46,10 @@ int main() {
     std::getline(std::cin, command);
     auto input = parse_input(command, " ");
     if (input.empty()){
+      continue;
+    }
+    if (input[0] == "type"){
+      builtin_type(input);
       continue;
     }
     if (input[0] == "exit")
