@@ -1,3 +1,4 @@
+#include <sys/wait.h>
 #include <unistd.h>
 
 #include <cstdlib>
@@ -13,6 +14,16 @@ constexpr char PATH_LIST_SEPARATOR[] = ":";
 #endif
 
 std::unordered_set<std::string> builtins = {"echo", "exit", "type"};
+
+std::string is_in_path(const std::string& command, const std::vector<std::string>& path) {
+  for (auto const& p : path) {
+    std::string file = p + "/" + command;
+    if (!access(file.c_str(), X_OK)) {
+      return file;
+    }
+  }
+  return "";
+}
 
 std::vector<std::string> parse_string(const std::string& s, const std::string& delim) {
   std::vector<std::string> result;
@@ -45,14 +56,39 @@ void builtin_type(const std::vector<std::string>& s, const std::vector<std::stri
     std::cout << s[1] << " is a shell builtin" << std::endl;
     return;
   }
-  for (auto& p : path) {
-    std::string file = p + "/" + s[1];
-    if (!access(file.c_str(), X_OK)) {
-      std::cout << s[1] << " is " << file << std::endl;
-      return;
-    }
+  std::string file = is_in_path(s[1], path);
+  if (!file.empty()) {
+    std::cout << s[1] << " is " << file << std::endl;
+    return;
+  } else {
+    std::cout << s[1] << ": not found" << std::endl;
   }
-  std::cout << s[1] << ": not found" << std::endl;
+  return;
+}
+std::vector<char*> make_args(const std::vector<std::string>& input) {
+  std::vector<char*> result;
+  for (auto& p : input) {
+    result.push_back(const_cast<char*>(p.c_str()));
+  }
+  result.push_back(nullptr);
+  return result;
+}
+// not a void probably
+void shell_execute(const std::string& file, const std::vector<std::string>& input) {
+  std::vector<char*> arg_vector = make_args(input);
+  int status;
+  pid_t pid = fork();
+  switch (pid) {
+    case 0:  // in child
+      execv(file.c_str(), arg_vector.data());
+      _exit(127);
+      break;
+    case -1:  // fork failed
+      std::cout << "fork failed" << std::endl;
+      break;
+    default:  // in parent
+      pid = wait(&status);
+  }
   return;
 }
 
@@ -81,6 +117,11 @@ int main() {
       builtin_echo(input);
       continue;
     }
-    std::cout << command << ": command not found" << std::endl;
+    std::string file = is_in_path(input[0], path_parsed);
+    if (!file.empty()) {  // there is an executable in path
+      shell_execute(file, input);
+    } else {
+      std::cout << command << ": command not found" << std::endl;
+    }
   }
 }
