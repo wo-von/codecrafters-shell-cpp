@@ -68,15 +68,15 @@ void builtin_type(const std::vector<std::string>& s, const std::vector<std::stri
   return;
 }
 
-void builtin_pwd(void) {
+void builtin_pwd() {
   int factor = 1024;
-  char* buf = (char*)malloc(factor);
+  char* buf = static_cast<char*>(malloc(factor));
   char* pwd = getcwd(buf, factor);
   while (pwd == nullptr) {
-    if (errno == ERANGE) {  // buffer two small
+    if (errno == ERANGE) {  // buffer too small
       factor *= 2;
       free(buf);
-      buf = (char*)malloc(factor);
+      buf = static_cast<char*>(malloc(factor));
       pwd = getcwd(buf, factor);
     } else {  // something else happened
       free(buf);
@@ -84,8 +84,8 @@ void builtin_pwd(void) {
       return;
     }
   }
-  std::cout << buf << std::endl;
-  free(buf);
+  std::cout << pwd << std::endl;
+  free(pwd);
   return;
 }
 
