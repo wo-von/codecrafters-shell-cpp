@@ -94,7 +94,13 @@ void builtin_cd(const std::vector<std::string>& input) {
     std::cout << "cd takes exactly one argument" << std::endl;
     return;
   }
-  int status = chdir(input[1].c_str());
+  char* user_home = getenv("HOME");
+  int status;
+  if (input[1] == "~") {
+    status = chdir(user_home);
+  } else {
+    status = chdir(input[1].c_str());
+  }
   if (status == 0)
     return;
   std::cout << "cd: " << input[1] << ": " << strerror(errno) << std::endl;
