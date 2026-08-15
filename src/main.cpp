@@ -15,7 +15,7 @@ constexpr char PATH_LIST_SEPARATOR[] = ";";
 constexpr char PATH_LIST_SEPARATOR[] = ":";
 #endif
 
-std::unordered_set<std::string> builtins = {"echo", "exit", "type", "pwd"};
+std::unordered_set<std::string> builtins = {"echo", "exit", "type", "pwd", "cd"};
 
 std::string is_in_path(const std::string& command, const std::vector<std::string>& path) {
   for (auto const& p : path) {
@@ -68,7 +68,7 @@ void builtin_type(const std::vector<std::string>& s, const std::vector<std::stri
   return;
 }
 
-void builtin_pwd() {
+void builtin_pwd(void) {
   int factor = 1024;
   char* buf = static_cast<char*>(malloc(factor));
   char* pwd = getcwd(buf, factor);
@@ -86,6 +86,18 @@ void builtin_pwd() {
   }
   std::cout << pwd << std::endl;
   free(pwd);
+  return;
+}
+
+void builtin_cd(const std::vector<std::string>& input) {
+  if (input.size() != 2) {
+    std::cout << "cd takes exactly one argument" << std::endl;
+    return;
+  }
+  int status = chdir(input[1].c_str());
+  if (status == 0)
+    return;
+  std::cout << "cd:" << input[1]<< ": "<< strerror(errno) << std::endl;
   return;
 }
 
@@ -143,6 +155,11 @@ int main() {
     }
     if (input[0] == "pwd") {
       builtin_pwd();
+      continue;
+    }
+
+    if (input[0] == "cd") {
+      builtin_cd(input);
       continue;
     }
     std::string file = is_in_path(input[0], path_parsed);
