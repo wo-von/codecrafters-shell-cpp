@@ -52,7 +52,7 @@ void builtin_type(const vector<string>& s, const vector<string>& path) {
       return;
     }
   }
-  cout << s[1] << ": command not found" << endl;
+  cout << s[1] << ": not found" << endl;
   return;
 }
 
