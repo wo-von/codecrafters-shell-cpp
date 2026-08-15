@@ -8,6 +8,13 @@
 
 set -e # Exit early if any commands fail
 
+cd "$(dirname "$0")" # Ensure everything below runs within the repository directory
+
+if [ "$1" = "format" ] || [ "$1" = "format-check" ]; then
+  cmake -B build -S . -DCMAKE_TOOLCHAIN_FILE=${VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake >/dev/null
+  exec cmake --build build --target "$1"
+fi
+
 # Copied from .codecrafters/compile.sh
 #
 # - Edit this to change how your program compiles locally
