@@ -6,67 +6,67 @@
 #include <unordered_set>
 #include <vector>
 
-using namespace std;
-
 #ifdef _WIN32
 constexpr char PATH_LIST_SEPARATOR[] = ";";
 #else
 constexpr char PATH_LIST_SEPARATOR[] = ":";
 #endif
 
-unordered_set<string> builtsins = {"echo", "exit", "type"};
+std::unordered_set<std::string> builtins = {"echo", "exit", "type"};
 
-vector<string> parse_string(const string& s, const string& delim) {
-  vector<string> result;
+std::vector<std::string> parse_string(const std::string& s, const std::string& delim) {
+  std::vector<std::string> result;
   size_t start = 0, end;
-  while ((end = s.find(delim, start)) != string::npos) {
-    string token = s.substr(start, end - start);
+  while ((end = s.find(delim, start)) != std::string::npos) {
+    std::string token = s.substr(start, end - start);
     if (!token.empty()) {
       result.push_back(token);
     }
     start = end + delim.size();
   }
-  string last = s.substr(start);
+  std::string last = s.substr(start);
   if (!last.empty()) {
     result.push_back(last);
   }
   return result;
 }
 
-void builtin_echo(const vector<string>& s) {
+void builtin_echo(const std::vector<std::string>& s) {
   for (size_t i = 1; i < s.size(); i++) {
-    cout << s[i] << " ";
+    if (i > 1)
+      std::cout << " ";
+    std::cout << s[i];
   }
-  cout << endl;
+  std::cout << std::endl;
   return;
 }
-void builtin_type(const vector<string>& s, const vector<string>& path) {
-  if (builtsins.contains(s[1])) {
-    cout << s[1] << " is a shell builtin" << endl;
+void builtin_type(const std::vector<std::string>& s, const std::vector<std::string>& path) {
+  if (builtins.contains(s[1])) {
+    std::cout << s[1] << " is a shell builtin" << std::endl;
     return;
   }
-  for (auto p : path) {
-    const char* file = p.append("/").append(s[1]).c_str();
-    if (!access(file, X_OK)) {
-      cout << s[1] << " is " << file << endl;
+  for (auto& p : path) {
+    std::string file = p + "/" + s[1];
+    if (!access(file.c_str(), X_OK)) {
+      std::cout << s[1] << " is " << file << std::endl;
       return;
     }
   }
-  cout << s[1] << ": not found" << endl;
+  std::cout << s[1] << ": not found" << std::endl;
   return;
 }
 
 int main() {
   // Flush after every std::cout / std:cerr
-  cout << unitbuf;
-  cerr << unitbuf;
+  std::cout << std::unitbuf;
+  std::cerr << std::unitbuf;
   char* path_raw = getenv("PATH");
-  string path_string = path_raw ? path_raw : "";
-  vector<string> path_parsed = parse_string(path_string, PATH_LIST_SEPARATOR);
+  std::string path_string = path_raw ? path_raw : "";
+  std::vector<std::string> path_parsed = parse_string(path_string, PATH_LIST_SEPARATOR);
   while (true) {
-    cout << "$ ";
-    string command;
-    getline(cin, command);
+    std::cout << "$ ";
+    std::string command;
+    std::getline(std::cin, command);
     auto input = parse_string(command, " ");
     if (input.empty()) {
       continue;
@@ -81,6 +81,6 @@ int main() {
       builtin_echo(input);
       continue;
     }
-    cout << command << ": command not found" << endl;
+    std::cout << command << ": command not found" << std::endl;
   }
 }
