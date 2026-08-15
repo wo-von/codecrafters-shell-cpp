@@ -1,7 +1,9 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
+#include <cerrno>
 #include <cstdlib>
+#include <cstring>
 #include <iostream>
 #include <string>
 #include <unordered_set>
@@ -13,7 +15,7 @@ constexpr char PATH_LIST_SEPARATOR[] = ";";
 constexpr char PATH_LIST_SEPARATOR[] = ":";
 #endif
 
-std::unordered_set<std::string> builtins = {"echo", "exit", "type"};
+std::unordered_set<std::string> builtins = {"echo", "exit", "type", "pwd"};
 
 std::string is_in_path(const std::string& command, const std::vector<std::string>& path) {
   for (auto const& p : path) {
@@ -65,6 +67,28 @@ void builtin_type(const std::vector<std::string>& s, const std::vector<std::stri
   }
   return;
 }
+
+void builtin_pwd(void) {
+  int factor = 1024;
+  char* buf = (char*)malloc(factor);
+  char* pwd = getcwd(buf, factor);
+  while (pwd == nullptr) {
+    if (errno == ERANGE) {  // buffer two small
+      factor *= 2;
+      free(buf);
+      buf = (char*)malloc(factor);
+      pwd = getcwd(buf, factor);
+    } else {  // something else happened
+      free(buf);
+      std::cerr << "cannot print working directory" << std::endl;
+      return;
+    }
+  }
+  std::cout << buf << std::endl;
+  free(buf);
+  return;
+}
+
 std::vector<char*> make_args(const std::vector<std::string>& input) {
   std::vector<char*> result;
   for (auto& p : input) {
@@ -115,6 +139,10 @@ int main() {
       break;
     if (input[0] == "echo") {
       builtin_echo(input);
+      continue;
+    }
+    if (input[0] == "pwd") {
+      builtin_pwd();
       continue;
     }
     std::string file = is_in_path(input[0], path_parsed);
