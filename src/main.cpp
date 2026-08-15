@@ -97,7 +97,7 @@ void builtin_cd(const std::vector<std::string>& input) {
   int status = chdir(input[1].c_str());
   if (status == 0)
     return;
-  std::cout << "cd:" << input[1]<< ": "<< strerror(errno) << std::endl;
+  std::cout << "cd: " << input[1] << ": " << strerror(errno) << std::endl;
   return;
 }
 
