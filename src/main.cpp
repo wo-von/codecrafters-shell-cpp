@@ -45,16 +45,22 @@ std::vector<std::string> parse_string(const std::string& s, const std::string& d
       continue;
     }
     if (c == '\\' && !in_double_quotes && !in_single_quotes) {
+      if (i + 1 == s.size()) {
+        std::cerr << "unmatched \\" << std::endl;
+        return {};
+      }
       token += s[++i];
+      token_started = true;
       continue;
     }
     if (c == '\\' && in_double_quotes) {  // escape certain chars in ""
       if (i + 1 == s.size()) {
-        std::cerr << "umatched \"" << std::endl;
+        std::cerr << "unmatched \"" << std::endl;
         return {};
       }
       if (s[i + 1] == '\"' || s[i + 1] == '\\') {
         token += s[++i];
+        token_started = true;
         continue;
       }
     }
@@ -72,7 +78,7 @@ std::vector<std::string> parse_string(const std::string& s, const std::string& d
     token_started = true;
   }
   if (in_single_quotes || in_double_quotes) {
-    std::cerr << "unmatched '" << std::endl;
+    std::cerr << "unmatched " << (in_single_quotes ? "'" : "\"") << std::endl;
     return {};
   }
   if (token_started) {
