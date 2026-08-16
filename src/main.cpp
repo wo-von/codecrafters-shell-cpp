@@ -32,10 +32,11 @@ std::vector<std::string> parse_string(const std::string& s, const std::string& d
   std::vector<std::string> result;
   std::string token;
   bool in_single_quotes = false;
+  bool in_double_quotes = false;
   bool token_started = false;
   for (size_t i = 0; i < s.size(); i++) {
     char c = s[i];
-    if (!in_single_quotes && delim.find(c) != std::string::npos) {
+    if ((!in_single_quotes && !in_double_quotes) && delim.find(c) != std::string::npos) {
       if (token_started) {
         result.push_back(token);
         token.clear();
@@ -43,15 +44,20 @@ std::vector<std::string> parse_string(const std::string& s, const std::string& d
       }
       continue;
     }
-    if (c == '\'') {
+    if (c == '\'' && !in_double_quotes) {
       in_single_quotes = !in_single_quotes;
+      token_started = true;
+      continue;
+    }
+    if (c == '\"' && !in_single_quotes) {
+      in_double_quotes = !in_double_quotes;
       token_started = true;
       continue;
     }
     token += c;
     token_started = true;
   }
-  if (in_single_quotes) {
+  if (in_single_quotes || in_double_quotes) {
     std::cerr << "unmatched '" << std::endl;
     return {};
   }
