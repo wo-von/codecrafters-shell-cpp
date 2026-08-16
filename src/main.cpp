@@ -27,7 +27,41 @@ std::string is_in_path(const std::string& command, const std::vector<std::string
   return "";
 }
 
+// delim is treated as a set of delimiter characters (like shell IFS), not a literal substring.
 std::vector<std::string> parse_string(const std::string& s, const std::string& delim) {
+  std::vector<std::string> result;
+  std::string token;
+  bool in_single_quotes = false;
+  bool token_started = false;
+  for (size_t i = 0; i < s.size(); i++) {
+    char c = s[i];
+    if (!in_single_quotes && delim.find(c) != std::string::npos) {
+      if (token_started) {
+        result.push_back(token);
+        token.clear();
+        token_started = false;
+      }
+      continue;
+    }
+    if (c == '\'') {
+      in_single_quotes = !in_single_quotes;
+      token_started = true;
+      continue;
+    }
+    token += c;
+    token_started = true;
+  }
+  if (in_single_quotes) {
+    std::cerr << "unmatched '" << std::endl;
+    return {};
+  }
+  if (token_started) {
+    result.push_back(token);
+  }
+  return result;
+}
+
+std::vector<std::string> parse_path(const std::string& s, const std::string& delim) {
   std::vector<std::string> result;
   size_t start = 0, end;
   while ((end = s.find(delim, start)) != std::string::npos) {
@@ -53,6 +87,7 @@ void builtin_echo(const std::vector<std::string>& s) {
   std::cout << std::endl;
   return;
 }
+
 void builtin_type(const std::vector<std::string>& s, const std::vector<std::string>& path) {
   if (builtins.contains(s[1])) {
     std::cout << s[1] << " is a shell builtin" << std::endl;
@@ -107,6 +142,7 @@ void builtin_cd(const std::vector<std::string>& input) {
   return;
 }
 
+// make a vector of sttrings into a c based argv[]
 std::vector<char*> make_args(const std::vector<std::string>& input) {
   std::vector<char*> result;
   for (auto& p : input) {
@@ -115,6 +151,7 @@ std::vector<char*> make_args(const std::vector<std::string>& input) {
   result.push_back(nullptr);
   return result;
 }
+
 // not a void probably
 void shell_execute(const std::string& file, const std::vector<std::string>& input) {
   std::vector<char*> arg_vector = make_args(input);
@@ -140,7 +177,7 @@ int main() {
   std::cerr << std::unitbuf;
   char* path_raw = getenv("PATH");
   std::string path_string = path_raw ? path_raw : "";
-  std::vector<std::string> path_parsed = parse_string(path_string, PATH_LIST_SEPARATOR);
+  std::vector<std::string> path_parsed = parse_path(path_string, PATH_LIST_SEPARATOR);
   while (true) {
     std::cout << "$ ";
     std::string command;
