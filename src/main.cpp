@@ -48,6 +48,16 @@ std::vector<std::string> parse_string(const std::string& s, const std::string& d
       token += s[++i];
       continue;
     }
+    if (c == '\\' && in_double_quotes) {  // escape certain chars in ""
+      if (i + 1 == s.size()) {
+        std::cerr << "umatched \"" << std::endl;
+        return {};
+      }
+      if (s[i + 1] == '\"' || s[i + 1] == '\\') {
+        token += s[++i];
+        continue;
+      }
+    }
     if (c == '\'' && !in_double_quotes) {
       in_single_quotes = !in_single_quotes;
       token_started = true;
@@ -170,7 +180,7 @@ void shell_execute(const std::string& file, const std::vector<std::string>& inpu
   switch (pid) {
     case 0:  // in child
       execv(file.c_str(), arg_vector.data());
-      _exit(127);
+      _exit(127);  // staying true to bash code conventions
       break;
     case -1:  // fork failed
       std::cout << "fork failed" << std::endl;
