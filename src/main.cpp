@@ -44,7 +44,7 @@ std::vector<std::string> parse_string(const std::string& s, const std::string& d
       }
       continue;
     }
-    if (c == '\\') {
+    if (c == '\\' && !in_double_quotes && !in_single_quotes) {
       token += s[++i];
       continue;
     }
