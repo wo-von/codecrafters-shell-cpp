@@ -17,6 +17,15 @@ constexpr char PATH_LIST_SEPARATOR[] = ";";
 constexpr char PATH_LIST_SEPARATOR[] = ":";
 #endif
 
+struct userInput {
+  std::string raw_input; // user's raw input
+  int redirect_position; // where the > is in the input
+  int redirect_fd; // file descriptor to be acted on
+  std::string command; // command part of the user input
+  std::vector<std::string> parsed_input; // raw input parsed into a vector of strings
+  std::string abs_path; // absolute path of the command
+};
+
 std::unordered_set<std::string> builtins = {"echo", "exit", "type", "pwd", "cd"};
 
 std::string is_in_path(const std::string& command, const std::vector<std::string>& path) {
@@ -30,13 +39,13 @@ std::string is_in_path(const std::string& command, const std::vector<std::string
 }
 
 // delim is treated as a set of delimiter characters (like shell IFS), not a literal substring.
-std::vector<std::string> parse_string(const std::string& s, const std::string& delim, int& redirect,
-                                       int& redirect_fd) {
+std::vector<std::string> parse_string(userInput& user_input, const std::string& delim) {
   std::vector<std::string> result;
   std::string token;
   bool in_single_quotes = false;
   bool in_double_quotes = false;
   bool token_started = false;
+  const std::string s = user_input.raw_input;
   for (size_t i = 0; i < s.size(); i++) {
     char c = s[i];
     if ((!in_single_quotes && !in_double_quotes) && delim.find(c) != std::string::npos) {
@@ -48,20 +57,20 @@ std::vector<std::string> parse_string(const std::string& s, const std::string& d
       continue;
     }
     if (c == '>' && !in_single_quotes && !in_double_quotes) {
-      redirect_fd = 1;
+      user_input.redirect_fd = 1;
       if (token_started) {
-        bool all_digits = !token.empty() && std::all_of(token.begin(), token.end(), [](unsigned char ch) {
-                             return std::isdigit(ch);
-                           });
+        bool all_digits =
+            !token.empty() && std::all_of(token.begin(), token.end(),
+                                          [](unsigned char ch) { return std::isdigit(ch); });
         if (all_digits) {
-          redirect_fd = std::stoi(token);
+          user_input.redirect_fd = std::stoi(token);
         } else {
           result.push_back(token);
         }
         token.clear();
         token_started = false;
       }
-      redirect = static_cast<int>(result.size());
+      user_input.redirect_position = static_cast<int>(result.size());
       result.push_back(">");
       continue;
     }
@@ -125,7 +134,8 @@ std::vector<std::string> parse_path(const std::string& s, const std::string& del
   return result;
 }
 
-void builtin_echo(const std::vector<std::string>& s) {
+void builtin_echo(userInput& input) {
+  std::vector<std::string> s = input.parsed_input;
   for (size_t i = 1; i < s.size(); i++) {
     if (i > 1)
       std::cout << " ";
@@ -135,7 +145,8 @@ void builtin_echo(const std::vector<std::string>& s) {
   return;
 }
 
-void builtin_type(const std::vector<std::string>& s, const std::vector<std::string>& path) {
+void builtin_type(userInput& input, const std::vector<std::string>& path) {
+  std::vector<std::string> s = input.parsed_input;
   if (builtins.contains(s[1])) {
     std::cout << s[1] << " is a shell builtin" << std::endl;
     return;
@@ -171,21 +182,21 @@ void builtin_pwd(void) {
   return;
 }
 
-void builtin_cd(const std::vector<std::string>& input) {
-  if (input.size() != 2) {
+void builtin_cd(userInput& input) {
+  if (input.parsed_input.size() != 2) {
     std::cout << "cd takes exactly one argument" << std::endl;
     return;
   }
   char* user_home = getenv("HOME");
   int status;
-  if (input[1] == "~") {
+  if (input.parsed_input[1] == "~") {
     status = chdir(user_home);
   } else {
-    status = chdir(input[1].c_str());
+    status = chdir(input.parsed_input[1].c_str());
   }
   if (status == 0)
     return;
-  std::cout << "cd: " << input[1] << ": " << strerror(errno) << std::endl;
+  std::cout << "cd: " << input.parsed_input[1] << ": " << strerror(errno) << std::endl;
   return;
 }
 
@@ -200,13 +211,13 @@ std::vector<char*> make_args(const std::vector<std::string>& input) {
 }
 
 // not a void probably
-void shell_execute(const std::string& command, const std::vector<std::string>& args) {
-  std::vector<char*> arg_vector = make_args(args);
+void shell_execute(userInput& input) {
+  std::vector<char*> arg_vector = make_args(input.parsed_input);
   int status;
   pid_t pid = fork();
   switch (pid) {
     case 0:  // in child
-      execv(command.c_str(), arg_vector.data());
+      execv(input.abs_path.c_str(), arg_vector.data());
       _exit(127);  // staying true to bash code conventions
       break;
     case -1:  // fork failed
@@ -218,13 +229,13 @@ void shell_execute(const std::string& command, const std::vector<std::string>& a
   return;
 }
 
-void shell_redirect(std::vector<std::string>& input, int redirect, int redirect_fd,
-                     const std::vector<std::string>& path) {
-  (void)redirect_fd;  // not wired into an open()/dup2() step yet
-  std::vector<std::string> command_part(input.begin(), input.begin() + redirect);
-  std::string file = is_in_path(command_part[0], path);
-  if (!file.empty()) {
-    shell_execute(file, command_part);
+void shell_redirect(userInput& input, const std::vector<std::string>& path) {
+  (void)input.redirect_fd;  // not wired into an open()/dup2() step yet
+  std::vector<std::string> command_part(input.parsed_input.begin(), input.parsed_input.begin()
+     + input.redirect_position);
+  std::string command = input.parsed_input[0];
+  if (!input.abs_path.empty()) {
+    shell_execute(input);
   } else {
     std::cout << command_part[0] << ": command not found" << std::endl;
   }
@@ -237,44 +248,45 @@ int main() {
   char* path_raw = getenv("PATH");
   std::string path_string = path_raw ? path_raw : "";
   std::vector<std::string> path_parsed = parse_path(path_string, PATH_LIST_SEPARATOR);
+  userInput user_input;
   while (true) {
     std::cout << "$ ";
-    std::string command;
-    std::getline(std::cin, command);
-    int redirect = -1;
-    int redirect_fd = 1;
-    auto input = parse_string(command, " ", redirect, redirect_fd);
-    if (input.empty()) {
+    std::getline(std::cin, user_input.raw_input);
+    user_input.redirect_position = -1;
+    user_input.redirect_fd = 1;
+    user_input.parsed_input = parse_string(user_input, " ");
+    if (user_input.parsed_input.empty()) {
       continue;
     }
-    if (redirect >= 0) {
-      shell_redirect(input, redirect, redirect_fd, path_parsed);
+    if (user_input.redirect_position >= 0) {
+      shell_redirect(user_input, path_parsed);
       continue;
     }
-    if (input[0] == "type") {
-      builtin_type(input, path_parsed);
+    std::string entered_command = user_input.parsed_input[0];
+    if (entered_command == "type") {
+      builtin_type(user_input, path_parsed);
       continue;
     }
-    if (input[0] == "exit")
+    if (entered_command == "exit")
       break;
-    if (input[0] == "echo") {
-      builtin_echo(input);
+    if (entered_command == "echo") {
+      builtin_echo(user_input);
       continue;
     }
-    if (input[0] == "pwd") {
+    if (entered_command == "pwd") {
       builtin_pwd();
       continue;
     }
 
-    if (input[0] == "cd") {
-      builtin_cd(input);
+    if (entered_command == "cd") {
+      builtin_cd(user_input);
       continue;
     }
-    std::string file = is_in_path(input[0], path_parsed);
-    if (!file.empty()) {  // there is an executable in path
-      shell_execute(file, input);
+    user_input.abs_path = is_in_path(entered_command, path_parsed);
+    if (!user_input.abs_path.empty()) {  // there is an executable in path
+      shell_execute(user_input);
     } else {
-      std::cout << command << ": command not found" << std::endl;
+      std::cout << entered_command << ": command not found" << std::endl;
     }
   }
 }
