@@ -1,6 +1,8 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
+#include <algorithm>
+#include <cctype>
 #include <cerrno>
 #include <cstdlib>
 #include <cstring>
@@ -28,7 +30,8 @@ std::string is_in_path(const std::string& command, const std::vector<std::string
 }
 
 // delim is treated as a set of delimiter characters (like shell IFS), not a literal substring.
-std::vector<std::string> parse_string(const std::string& s, const std::string& delim) {
+std::vector<std::string> parse_string(const std::string& s, const std::string& delim, int& redirect,
+                                       int& redirect_fd) {
   std::vector<std::string> result;
   std::string token;
   bool in_single_quotes = false;
@@ -42,6 +45,24 @@ std::vector<std::string> parse_string(const std::string& s, const std::string& d
         token.clear();
         token_started = false;
       }
+      continue;
+    }
+    if (c == '>' && !in_single_quotes && !in_double_quotes) {
+      redirect_fd = 1;
+      if (token_started) {
+        bool all_digits = !token.empty() && std::all_of(token.begin(), token.end(), [](unsigned char ch) {
+                             return std::isdigit(ch);
+                           });
+        if (all_digits) {
+          redirect_fd = std::stoi(token);
+        } else {
+          result.push_back(token);
+        }
+        token.clear();
+        token_started = false;
+      }
+      redirect = static_cast<int>(result.size());
+      result.push_back(">");
       continue;
     }
     if (c == '\\' && !in_double_quotes && !in_single_quotes) {
@@ -168,7 +189,7 @@ void builtin_cd(const std::vector<std::string>& input) {
   return;
 }
 
-// make a vector of sttrings into a c based argv[]
+// make a vector of strings into a c based argv[]
 std::vector<char*> make_args(const std::vector<std::string>& input) {
   std::vector<char*> result;
   for (auto& p : input) {
@@ -179,13 +200,13 @@ std::vector<char*> make_args(const std::vector<std::string>& input) {
 }
 
 // not a void probably
-void shell_execute(const std::string& file, const std::vector<std::string>& input) {
-  std::vector<char*> arg_vector = make_args(input);
+void shell_execute(const std::string& command, const std::vector<std::string>& args) {
+  std::vector<char*> arg_vector = make_args(args);
   int status;
   pid_t pid = fork();
   switch (pid) {
     case 0:  // in child
-      execv(file.c_str(), arg_vector.data());
+      execv(command.c_str(), arg_vector.data());
       _exit(127);  // staying true to bash code conventions
       break;
     case -1:  // fork failed
@@ -195,6 +216,18 @@ void shell_execute(const std::string& file, const std::vector<std::string>& inpu
       pid = wait(&status);
   }
   return;
+}
+
+void shell_redirect(std::vector<std::string>& input, int redirect, int redirect_fd,
+                     const std::vector<std::string>& path) {
+  (void)redirect_fd;  // not wired into an open()/dup2() step yet
+  std::vector<std::string> command_part(input.begin(), input.begin() + redirect);
+  std::string file = is_in_path(command_part[0], path);
+  if (!file.empty()) {
+    shell_execute(file, command_part);
+  } else {
+    std::cout << command_part[0] << ": command not found" << std::endl;
+  }
 }
 
 int main() {
@@ -208,8 +241,14 @@ int main() {
     std::cout << "$ ";
     std::string command;
     std::getline(std::cin, command);
-    auto input = parse_string(command, " ");
+    int redirect = -1;
+    int redirect_fd = 1;
+    auto input = parse_string(command, " ", redirect, redirect_fd);
     if (input.empty()) {
+      continue;
+    }
+    if (redirect >= 0) {
+      shell_redirect(input, redirect, redirect_fd, path_parsed);
       continue;
     }
     if (input[0] == "type") {
