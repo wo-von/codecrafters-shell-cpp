@@ -1,0 +1,155 @@
+commit fc1f34fccac7d1fdd9c0633fc99e83dc6e5daf3b
+Author: Sina Hosseinizad <24656395+wo-von@users.noreply.github.com>
+Date:   Mon Aug 17 18:09:26 2026 +0200
+
+    WIP again for shell redirection)
+
+commit 7338b191f54bfb5972f3c7c79a43c05ec52c20c3
+Author: Sina Hosseinizad <24656395+wo-von@users.noreply.github.com>
+Date:   Mon Aug 17 16:35:26 2026 +0200
+
+    WIP in redirections
+
+commit 71fab8f057a4c3049e19c91ba692d82c5883f8a0
+Author: Sina Hosseinizad <24656395+wo-von@users.noreply.github.com>
+Date:   Sun Aug 16 22:08:32 2026 +0200
+
+    fix bug for when the input starts with a single or double quote
+
+commit 07122e88e52875105adefd50a724f92f9e3e1530
+Author: Sina Hosseinizad <24656395+wo-von@users.noreply.github.com>
+Date:   Sun Aug 16 21:53:51 2026 +0200
+
+    codecrafters submit [skip ci]
+
+commit 60b7220a1c7cf7628571c7deebebbd425ab09d45
+Author: Sina Hosseinizad <24656395+wo-von@users.noreply.github.com>
+Date:   Sun Aug 16 21:26:03 2026 +0200
+
+    codecrafters submit [skip ci]
+
+commit c29cba6df743d1e3c1200bf707cd12c99b17ad2c
+Author: Sina Hosseinizad <24656395+wo-von@users.noreply.github.com>
+Date:   Sun Aug 16 17:31:21 2026 +0200
+
+    codecrafters submit [skip ci]
+
+commit dec0ea788b3eaa84d8eacc98ec6eb72419cd8ee2
+Author: Sina Hosseinizad <24656395+wo-von@users.noreply.github.com>
+Date:   Sun Aug 16 17:22:19 2026 +0200
+
+    codecrafters submit [skip ci]
+
+commit 4b2a32fe72aa0080bebfbc53ba223d5c6e25f6e8
+Author: Sina Hosseinizad <24656395+wo-von@users.noreply.github.com>
+Date:   Sun Aug 16 15:13:53 2026 +0200
+
+    codecrafters submit [skip ci]
+
+commit e9aa0fc278eb2d612d0c15635b18ae4786b0e013
+Author: Sina Hosseinizad <24656395+wo-von@users.noreply.github.com>
+Date:   Sun Aug 16 01:03:23 2026 +0200
+
+    codecrafters submit [skip ci]
+
+commit 65fafbf29df7609043c0599040da211671f32da2
+Author: Sina Hosseinizad <24656395+wo-von@users.noreply.github.com>
+Date:   Sat Aug 15 22:16:36 2026 +0200
+
+    codecrafters submit [skip ci]
+
+commit 043599e72864fe7129e9351c2ccad9a309ff0686
+Author: Sina Hosseinizad <24656395+wo-von@users.noreply.github.com>
+Date:   Sat Aug 15 22:15:44 2026 +0200
+
+    codecrafters submit [skip ci]
+
+commit 2188b5b0d805805735ab47a106cc74b9830447d6
+Author: Sina Hosseinizad <24656395+wo-von@users.noreply.github.com>
+Date:   Sat Aug 15 21:02:22 2026 +0200
+
+    codecrafters submit [skip ci]
+
+commit e8fc81f33d7270fd24a772ce3abeca6271488106
+Author: Sina Hosseinizad <24656395+wo-von@users.noreply.github.com>
+Date:   Sat Aug 15 20:55:48 2026 +0200
+
+    codecrafters submit [skip ci]
+
+commit 4b96ecdd219349a783a3dd0f9e33a0b2134f486b
+Author: Sina Hosseinizad <24656395+wo-von@users.noreply.github.com>
+Date:   Sat Aug 15 20:11:26 2026 +0200
+
+    codecrafters submit [skip ci]
+
+commit c617b1d86a75a4cb2eaa72ef046ed22a131c66b4
+Author: Sina Hosseinizad <24656395+wo-von@users.noreply.github.com>
+Date:   Sat Aug 15 18:20:59 2026 +0200
+
+    codecrafters submit [skip ci]
+
+commit a3ab0a9c15198aa39909bd7d3ac2905e3217674f
+Author: Sina Hosseinizad <24656395+wo-von@users.noreply.github.com>
+Date:   Sat Aug 15 17:35:18 2026 +0200
+
+    codecrafters submit [skip ci]
+
+commit 34040d90a0b7884c9292b0a103528c00de04d001
+Author: Sina Hosseinizad <24656395+wo-von@users.noreply.github.com>
+Date:   Sat Aug 15 17:34:26 2026 +0200
+
+    codecrafters submit [skip ci]
+
+commit b483900a9a427379576d3fabba66c5003f008437
+Author: Sina Hosseinizad <24656395+wo-von@users.noreply.github.com>
+Date:   Sat Aug 15 17:30:07 2026 +0200
+
+    codecrafters submit [skip ci]
+
+commit 001488381877f884db9a0ee3d4afe297028079dc
+Author: Sina Hosseinizad <24656395+wo-von@users.noreply.github.com>
+Date:   Sat Aug 15 17:29:35 2026 +0200
+
+    codecrafters submit [skip ci]
+
+commit 097d19d46b090a0aa6f72124857db370584bb0b2
+Author: Sina Hosseinizad <24656395+wo-von@users.noreply.github.com>
+Date:   Fri Aug 14 20:39:18 2026 +0200
+
+    codecrafters submit [skip ci]
+
+commit 35fadea4bbc8093073a36aa0da26b6f9498b8064
+Author: Sina Hosseinizad <24656395+wo-von@users.noreply.github.com>
+Date:   Fri Aug 14 20:25:26 2026 +0200
+
+    codecrafters submit [skip ci]
+
+commit ee358e8c00e97bd1d7ee58d79fc1e12d39964b28
+Author: Sina Hosseinizad <24656395+wo-von@users.noreply.github.com>
+Date:   Fri Aug 14 19:27:43 2026 +0200
+
+    codecrafters submit [skip ci]
+
+commit 20721f09fcaef41a346a1d772061d055d007ebc6
+Author: Sina Hosseinizad <24656395+wo-von@users.noreply.github.com>
+Date:   Fri Aug 14 19:23:11 2026 +0200
+
+    codecrafters submit [skip ci]
+
+commit 020b176b5270da8fd0a0325be8d4d7efe52444ed
+Author: Sina Hosseinizad <24656395+wo-von@users.noreply.github.com>
+Date:   Fri Aug 14 19:20:05 2026 +0200
+
+    codecrafters submit [skip ci]
+
+commit 6fc42ef300c1594c2a55d1dfa093d1ef5aafaf8b
+Author: sina hosseinizad <ssh@ammonit.com>
+Date:   Wed Aug 12 17:33:50 2026 +0200
+
+    codecrafters submit [skip ci]
+
+commit c0a4ac797230964e785d07c0aacdc5f6db202338
+Author: codecrafters-bot <hello@codecrafters.io>
+Date:   Wed Aug 12 15:12:25 2026 +0000
+
+    init [skip ci]
