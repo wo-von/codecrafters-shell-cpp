@@ -1,6 +1,6 @@
+#include <fcntl.h>
 #include <sys/wait.h>
 #include <unistd.h>
-#include <fcntl.h>
 
 #include <algorithm>
 #include <cctype>
@@ -20,11 +20,16 @@ constexpr char PATH_LIST_SEPARATOR[] = ";";
 constexpr char PATH_LIST_SEPARATOR[] = ":";
 #endif
 
+struct RedirectInfo {
+  int position = -1;    // index of '>' in parsed_input, or -1 if no redirect
+  int fd = 1;           // file descriptor to redirect
+  bool append = false;  // append vs. create/truncate
+};
+
 struct userInput {
-  std::string raw_input; // user's raw input
-  int redirect_position; // where the > is in the input
-  int redirect_fd; // file descriptor to be acted on
-  std::vector<std::string> parsed_input; // raw input parsed into a vector of strings
+  std::string raw_input;                  // user's raw input
+  RedirectInfo redirect;                  // redirect info parsed from raw_input, if any
+  std::vector<std::string> parsed_input;  // raw input parsed into a vector of strings
 };
 
 const std::unordered_set<std::string> builtins = {"echo", "exit", "type", "pwd", "cd"};
@@ -32,26 +37,45 @@ const std::unordered_set<std::string> builtins = {"echo", "exit", "type", "pwd",
 // Number of tokens in parsed_input that are actually command/args, excluding
 // the '>' and its target when a redirect is present.
 size_t effective_arg_count(const userInput& input) {
-  return input.redirect_position >= 0 ? static_cast<size_t>(input.redirect_position)
-                                       : input.parsed_input.size();
+  return input.redirect.position >= 0 ? static_cast<size_t>(input.redirect.position)
+                                      : input.parsed_input.size();
 }
 
 // Rejects a redirect with no command before it or no filename after it,
-// reporting an error. Every later access of parsed_input[redirect_position +
+// reporting an error. Every later access of parsed_input[redirect.position +
 // 1] or command_args[0] relies on this having been checked first.
 bool validate_redirect_syntax(const userInput& input) {
-  if (input.redirect_position < 0) {
+  if (input.redirect.position < 0) {
     return true;
   }
-  if (input.redirect_position == 0) {
+  if (input.redirect.position == 0) {
     std::cerr << "syntax error: unexpected token '>'" << std::endl;
     return false;
   }
-  if (static_cast<size_t>(input.redirect_position) + 1 >= input.parsed_input.size()) {
+  if (static_cast<size_t>(input.redirect.position) + 1 >= input.parsed_input.size()) {
     std::cerr << "syntax error: expected a filename after '>'" << std::endl;
     return false;
   }
   return true;
+}
+
+// Resolves the redirect target (fd, filename, append-mode) described by
+// input.redirect, or nullopt if there is none. Centralizes the
+// parsed_input[position + 1] indexing convention in one place so
+// RedirectGuard and shell_execute don't each re-derive it.
+// Precondition: validate_redirect_syntax(input) returned true.
+struct RedirectTarget {
+  int fd;
+  std::string file;
+  bool append;
+};
+
+std::optional<RedirectTarget> get_redirect(const userInput& input) {
+  if (input.redirect.position < 0) {
+    return std::nullopt;
+  }
+  return RedirectTarget{input.redirect.fd, input.parsed_input[input.redirect.position + 1],
+                        input.redirect.append};
 }
 
 std::string is_in_path(const std::string& command, const std::vector<std::string>& path) {
@@ -83,20 +107,24 @@ std::vector<std::string> parse_string(userInput& user_input, const std::string& 
       continue;
     }
     if (c == '>' && !in_single_quotes && !in_double_quotes) {
-      user_input.redirect_fd = 1;
+      user_input.redirect.fd = 1;
       if (token_started) {
         bool all_digits =
             !token.empty() && std::all_of(token.begin(), token.end(),
                                           [](unsigned char ch) { return std::isdigit(ch); });
         if (all_digits) {
-          user_input.redirect_fd = std::stoi(token);
+          user_input.redirect.fd = std::stoi(token);
         } else {
           result.push_back(token);
         }
         token.clear();
         token_started = false;
       }
-      user_input.redirect_position = static_cast<int>(result.size());
+      user_input.redirect.position = static_cast<int>(result.size());
+      if (i + 1 < s.size() && s[i + 1] == '>') {
+        user_input.redirect.append = true;
+        i++;
+      }
       result.push_back(">");
       continue;
     }
@@ -231,23 +259,27 @@ std::vector<char*> make_args(const std::vector<std::string>& input) {
 
 // Opens (create/truncate) the redirect target for writing. Returns -1 on
 // failure, having already reported the error.
-int open_redirect_target(const std::string& file_name) {
-  int fd = open(file_name.c_str(), O_CREAT | O_TRUNC | O_WRONLY, 0644);
+int open_redirect_target(const std::string& file_name, bool append) {
+  int flags_truncate = O_CREAT | O_TRUNC | O_WRONLY;
+  int flags_append = O_CREAT | O_APPEND | O_WRONLY;
+  int flags = append ? flags_append : flags_truncate;
+  int fd = open(file_name.c_str(), flags, 0644);
   if (fd == -1) {
     perror("open");
   }
   return fd;
 }
 
-// Points target_fd at file_name for the guard's lifetime, restoring target_fd
-// to whatever it pointed at before once the guard goes out of scope. Meant
-// for builtins, which run in this process and must hand the terminal back
-// afterward -- external commands redirect themselves once in the forked
-// child instead (see shell_execute), since that process never returns.
+// Points redirect.fd at redirect.file for the guard's lifetime, restoring it
+// to whatever it pointed at before once the guard goes out of scope. Used
+// both for builtins (which run in this process and must hand the terminal
+// back afterward) and, in shell_execute, wrapped around fork()+waitpid() in
+// the parent -- fork() duplicates the already-redirected fd table into the
+// child, so the child inherits the redirect without touching it itself.
 class RedirectGuard {
- public:
-  RedirectGuard(int target_fd, const std::string& file_name) : target_fd_(target_fd) {
-    int new_fd = open_redirect_target(file_name);
+public:
+  explicit RedirectGuard(const RedirectTarget& redirect) : target_fd_(redirect.fd) {
+    int new_fd = open_redirect_target(redirect.file, redirect.append);
     if (new_fd == -1) {
       return;
     }
@@ -272,9 +304,11 @@ class RedirectGuard {
   RedirectGuard(const RedirectGuard&) = delete;
   RedirectGuard& operator=(const RedirectGuard&) = delete;
 
-  bool ok() const { return ok_; }
+  bool ok() const {
+    return ok_;
+  }
 
- private:
+private:
   int target_fd_;
   int saved_fd_ = -1;
   bool ok_ = false;
@@ -284,24 +318,24 @@ class RedirectGuard {
 void shell_execute(userInput& input, const std::vector<std::string>& path) {
   size_t arg_count = effective_arg_count(input);
   std::vector<std::string> command_args(input.parsed_input.begin(),
-                                         input.parsed_input.begin() + arg_count);
+                                        input.parsed_input.begin() + arg_count);
   std::string abs_path = is_in_path(command_args[0], path);
   if (abs_path.empty()) {
     std::cerr << command_args[0] << ": command not found" << std::endl;
     return;
   }
   std::vector<char*> arg_vector = make_args(command_args);
+
+  std::optional<RedirectGuard> redirect_guard;
+  if (auto redirect = get_redirect(input)) {
+    redirect_guard.emplace(*redirect);
+    if (!redirect_guard->ok()) {
+      return;
+    }
+  }
+
   pid_t pid = fork();
   if (pid == 0) {  // in child
-    if (input.redirect_position >= 0) {
-      const std::string& file_name = input.parsed_input[input.redirect_position + 1];
-      int new_fd = open_redirect_target(file_name);
-      if (new_fd == -1) {
-        _exit(1);
-      }
-      dup2(new_fd, input.redirect_fd);
-      close(new_fd);
-    }
     execv(abs_path.c_str(), arg_vector.data());
     _exit(127);  // staying true to bash code conventions
   } else if (pid == -1) {
@@ -322,8 +356,7 @@ int main() {
     std::cout << "$ ";
     userInput user_input;
     std::getline(std::cin, user_input.raw_input);
-    user_input.redirect_position = -1;
-    user_input.redirect_fd = 1;
+    user_input.redirect = RedirectInfo{};
     user_input.parsed_input = parse_string(user_input, " ");
     if (user_input.parsed_input.empty()) {
       continue;
@@ -339,11 +372,12 @@ int main() {
     bool command_is_builtin = builtins.contains(entered_command);
 
     std::optional<RedirectGuard> redirect_guard;
-    if (user_input.redirect_position >= 0 && command_is_builtin) {
-      const std::string& file_name = user_input.parsed_input[user_input.redirect_position + 1];
-      redirect_guard.emplace(user_input.redirect_fd, file_name);
-      if (!redirect_guard->ok()) {
-        continue;
+    if (command_is_builtin) {
+      if (auto redirect = get_redirect(user_input)) {
+        redirect_guard.emplace(*redirect);
+        if (!redirect_guard->ok()) {
+          continue;
+        }
       }
     }
 

@@ -1,0 +1,12 @@
+build
+CLAUDE.md
+CMakeLists.txt
+codecrafters.yml
+lsfile.txt
+README.md
+src
+testfile
+vcpkg-configuration.json
+vcpkg.json
+your_program.sh
+/home/ssh/git-repos/codecrafters-shell-cpp
